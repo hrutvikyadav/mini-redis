@@ -1,22 +1,28 @@
-use mini_redis::{client, Result};
+use tokio::net::{TcpListener, TcpStream};
+use mini_redis::{Connection, Frame};
 
 #[tokio::main]
-async fn main() -> Result<()> {
-    // Open a connection to the mini-redis address.
-    let c = client::connect("127.0.0.1:6379");
+async fn main() {
+    // Bind the listener to the address
+    let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
 
-    println!("processing connect in the bg?");
+    loop {
+        // The second item contains the IP and port of the new connection.
+        let (socket, _) = listener.accept().await.unwrap();
+        process(socket).await;
+    }
+}
 
-    let mut client = c.await?;
-    // Set the key "hello" with value "world"
-    client.set("hello", "world".into()).await?;
-    // Get key "hello"
-    let result = client.get("hello").await?;
+async fn process(socket: TcpStream) {
+    // The `Connection` lets us read/write redis **frames** instead of
+    // byte streams. The `Connection` type is defined by mini-redis.
+    let mut connection = Connection::new(socket);
 
+    if let Some(frame) = connection.read_frame().await.unwrap() {
+        println!("GOT: {:?}", frame);
 
-
-
-    println!("got value from the server; result={:?}", result);
-
-    Ok(())
+        // Respond with an error
+        let response = Frame::Error("unimplemented".to_string());
+        connection.write_frame(&response).await.unwrap();
+    }
 }
