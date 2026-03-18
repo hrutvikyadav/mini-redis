@@ -3,6 +3,7 @@ use mini_redis::{Connection, Frame};
 use bytes::Bytes;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use my_redis::custom::connection; // TODO: replace mini_redis::Connection with custom Connection
 
 type Db = Arc<Mutex<HashMap<String, Bytes>>>;
 

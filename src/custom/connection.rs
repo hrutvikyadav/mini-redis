@@ -59,6 +59,3 @@ impl Connection {
     }
 }
 
-fn main() -> () {
-    // let connection = self::Connection::new();
-}
