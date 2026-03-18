@@ -1,3 +1,4 @@
+use tokio::io::AsyncReadExt;
 use tokio::net::TcpStream;
 use mini_redis::{Frame, Result};
 use bytes::BytesMut;
@@ -56,4 +57,8 @@ impl Connection {
     {
         // implementation here
     }
+}
+
+fn main() -> () {
+    // let connection = self::Connection::new();
 }
