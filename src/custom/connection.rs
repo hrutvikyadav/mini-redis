@@ -1,20 +1,18 @@
-use tokio::io::AsyncReadExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
 use tokio::net::TcpStream;
 use mini_redis::{Frame, Result};
 use bytes::{Buf, BytesMut};
 use std::io::Cursor;
 
 struct Connection {
-    stream: TcpStream,
+    stream: BufWriter<TcpStream>,
     buffer: BytesMut,
 }
 
 impl Connection {
     pub fn new(stream: TcpStream) -> Connection {
         Connection {
-            stream,
-            // In constructor;
-            // allocate buffer of 4kb capacity
+            stream: BufWriter::new(stream),
             buffer: BytesMut::with_capacity(4096),
         }
     }
@@ -90,6 +88,39 @@ impl Connection {
         -> Result<()>
     {
         // implementation here
+        match frame {
+            Frame::Simple(val) => {
+                self.stream.write_u8(b'+').await?;
+                self.stream.write_all(val.as_bytes()).await?;
+                self.stream.write_all(b"\r\n").await?;
+            }
+            Frame::Error(val) => {
+                self.stream.write_u8(b'-').await?;
+                self.stream.write_all(val.as_bytes()).await?;
+                self.stream.write_all(b"\r\n").await?;
+            }
+            Frame::Integer(val) => {
+                self.stream.write_u8(b':').await?;
+
+                self.write_decimal(*val).await?;
+            }
+            Frame::Null => {
+                self.stream.write_all(b"$-1\r\n").await?;
+            }
+            Frame::Bulk(val) => {
+                let len = val.len();
+
+                self.stream.write_u8(b'$').await?;
+                self.write_decimal(len as u64).await?;
+                self.stream.write_all(val).await?;
+                self.stream.write_all(b"\r\n").await?;
+            }
+            Frame::Array(_val) => unimplemented!(),
+        }
+
+        self.stream.flush().await;
+
+        Ok(())
     }
 }
 
